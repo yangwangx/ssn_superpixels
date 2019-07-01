@@ -81,7 +81,7 @@ def compute_spixels(data_type, n_spixels, num_steps,
                 spix_index = enforce_connectivity(spix_index[None, :, :], min_size, max_size)[0]
 
             spixel_image = get_spixel_image(given_img, spix_index)
-    	    out_img_file = out_folder + imgname + '_bdry.jpg'
+            out_img_file = out_folder + imgname + '_bdry.jpg'
             imsave(out_img_file, spixel_image)
             out_file = out_folder + imgname + '.npy'
             np.save(out_file, spix_index)
