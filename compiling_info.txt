@@ -1,0 +1,1 @@
+This code can work on bigiris server after running 'conda deactivate'
