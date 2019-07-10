@@ -22,8 +22,10 @@ from fetch_and_transform_data import fetch_and_transform_data, transform_and_get
 from create_net import load_ssn_net
 
 import sys
-sys.path.append('../lib/cython')
+sys.path.append('./lib/cython')
 from connectivity import enforce_connectivity
+sys.path.append('./lib/evalSP')
+from EvalSPModule import computeASA
 
 def compute_spixels(data_type, n_spixels, num_steps,
                     caffe_model, out_folder, is_connected = True):
@@ -36,6 +38,8 @@ def compute_spixels(data_type, n_spixels, num_steps,
     p_scale = 0.40
     color_scale = 0.26
 
+    asa_total = 0.0
+    asa_count = 0
     with open(image_list) as list_f:
         for imgname in list_f:
             print(imgname)
@@ -79,24 +83,36 @@ def compute_spixels(data_type, n_spixels, num_steps,
                 min_size = int(0.06 * segment_size)
                 max_size = int(3 * segment_size)
                 spix_index = enforce_connectivity(spix_index[None, :, :], min_size, max_size)[0]
-
-            spixel_image = get_spixel_image(given_img, spix_index)
-            out_img_file = out_folder + imgname + '_bdry.jpg'
-            imsave(out_img_file, spixel_image)
-            out_file = out_folder + imgname + '.npy'
-            np.save(out_file, spix_index)
-
+            # evaluate
+            spList = spix_index.flatten().tolist()
+            gt_filename = 'data/BSR/BSDS500/data/groundTruth/test/{}.mat'.format(imgname)
+            from scipy.io import loadmat
+            gtseg_all = loadmat(gt_filename)['groundTruth'][0]
+            nlabel = len(gtseg_all)
+            for t in range(nlabel):
+                gtseg = gtseg_all[t][0][0][0]
+                gtList = gtseg.flatten().tolist()
+                asa = computeASA(spList, gtList, 0)
+                asa_total += asa
+                asa_count += 1
+            print('count: {}, asa: {}'.format(asa_count, asa_total / asa_count))
+            # save image
+            # spixel_image = get_spixel_image(given_img, spix_index)
+            # out_img_file = out_folder + imgname + '_bdry.jpg'
+            # imsave(out_img_file, spixel_image)
+            # out_file = out_folder + imgname + '.npy'
+            # np.save(out_file, spix_index)
     return
 
 
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--datatype', type=str, required=True)
-    parser.add_argument('--n_spixels', type=int, required=True)
+    parser.add_argument('--datatype', type=str, default='TEST')
+    parser.add_argument('--n_spixels', type=int, default=300)
     parser.add_argument('--num_steps', type=int, default=10)
-    parser.add_argument('--caffemodel', type=str, required=True)
-    parser.add_argument('--result_dir', type=str, required=True)
+    parser.add_argument('--caffemodel', type=str, default='models/ssn_bsds_model.caffemodel')
+    parser.add_argument('--result_dir', type=str, default='bsds_test/')
     parser.add_argument('--is_connected', type=bool, default=True)
 
     var_args = parser.parse_args()
